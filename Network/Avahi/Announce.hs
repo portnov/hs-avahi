@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, RecordWildCards #-}
 module Network.Avahi.Announce where
 
 import Data.Int
@@ -11,27 +11,22 @@ import DBus.Client.Simple
 import Network.Avahi.Common
 
 -- | Announce network service
-announce :: String -- ^ Service name
-         -> String -- ^ Service type
-         -> String -- ^ Domain
-         -> String -- ^ Host
-         -> Word16 -- ^ Port number
-         -> String -- ^ Text
+announce :: Service      -- ^ Service to announce
          -> IO ()
-announce name stype domain host port text = do
+announce (Service {..}) = do
   bus <- connectSystem
   server <- proxy bus avahiBus "/"
   [newGroup] <- call server serverInterface "EntryGroupNew" []
   new <- proxy bus avahiBus (fromJust $ fromVariant newGroup)
-  let text' = [map (fromIntegral . ord) text] :: [[Word8]]
+  let text' = [map (fromIntegral . ord) serviceText] :: [[Word8]]
   call new entryGroupInterface "AddService" [toVariant (-1 :: Int32), -- IF_UNSPEC
-                                             toVariant (0 :: Int32),  -- PROTO_INET
-                                             toVariant (0 :: Word32),  -- 
-                                             toVariant name,
-                                             toVariant stype,
-                                             toVariant domain,
-                                             toVariant host,
-                                             toVariant port,
+                                             proto2variant serviceProtocol,
+                                             flags_empty,
+                                             toVariant serviceName,
+                                             toVariant serviceType,
+                                             toVariant serviceDomain,
+                                             toVariant serviceHost,
+                                             toVariant servicePort,
                                              toVariant text']
   call new entryGroupInterface "Commit" []
   return ()
