@@ -16,26 +16,31 @@ import DBus.Internal.Message
 
 import Network.Avahi.Common
 
-listenAvahi ::  Maybe BusName -> C.MatchRule
-listenAvahi name = matchAny { matchSender = name }
+listenAvahi ::  Maybe BusName -> Maybe MemberName -> C.MatchRule
+listenAvahi name member = matchAny { matchSender = name, matchMember = member }
 
 -- | Browse for specified service
 browse :: BrowseQuery -> IO ()
 browse (BrowseQuery {..}) = do
   client <- connectSystem
+  -- We have to set up callback for ItemNew signal before we actually create a browser.
+  -- Otherwise, the signal can arrive sooner then we managed to set up a callback for it.
+  -- See also https://github.com/cocagne/txdbus/issues/8, https://github.com/lathiat/avahi/issues/9
+  addMatch client (listenAvahi Nothing Nothing) (handler client lookupCallback)
   [sb] <- call' client "/" serverInterface "ServiceBrowserNew" [iface_unspec,
                                                                proto2variant lookupProtocol,
                                                                toVariant lookupServiceName,
                                                                toVariant lookupDomain,
                                                                flags_empty ]
-  addMatch client (listenAvahi $ fromVariant sb) (handler client lookupCallback)
-  addMatch client (listenAvahi $ Just serviceResolver) (handler client lookupCallback)
+  -- print sb
+  addMatch client (listenAvahi (Just serviceResolver) (Just "Found")) (handler client lookupCallback)
   return ()
 
 -- | Dispatch signal and call corresponding function.
 dispatch ::  [(String, Signal -> IO b)] -> Signal -> IO ()
 dispatch pairs signal = do
   let signame = signalMember signal
+  -- putStrLn $ "signame: " ++ show signame ++ ", sender: " ++ show (signalSender signal)
   let good = [callback | (name, callback) <- pairs, memberName_ name == signame]
   forM_ good $ \callback ->
       callback signal
