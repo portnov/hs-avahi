@@ -10,57 +10,52 @@ import Data.Text (Text)
 import Data.Word
 import Data.Int
 import Data.Char
-import qualified DBus.Client as C
-import DBus.Message
-import DBus.Client.Simple
+import DBus.Client as C
+import DBus.Internal.Types
+import DBus.Internal.Message
 
 import Network.Avahi.Common
 
 listenAvahi ::  Maybe BusName -> C.MatchRule
-listenAvahi name = C.MatchRule {
-  C.matchSender = name,
-  C.matchDestination = Nothing,
-  C.matchPath = Nothing,
-  C.matchInterface = Nothing,
-  C.matchMember = Nothing }
+listenAvahi name = matchAny { matchSender = name }
 
 -- | Browse for specified service
 browse :: BrowseQuery -> IO ()
 browse (BrowseQuery {..}) = do
-  bus <- connectSystem
-  server <- proxy bus avahiBus "/"
-  [sb] <- call server serverInterface "ServiceBrowserNew" [iface_unspec,
-                                                        proto2variant lookupProtocol,
-                                                        toVariant lookupServiceName,
-                                                        toVariant lookupDomain,
-                                                        flags_empty ]
-  C.listen bus (listenAvahi $ fromVariant sb) (handler server lookupCallback)
-  C.listen bus (listenAvahi $ Just serviceResolver) (handler server lookupCallback)
+  client <- connectSystem
+  [sb] <- call' client "/" serverInterface "ServiceBrowserNew" [iface_unspec,
+                                                               proto2variant lookupProtocol,
+                                                               toVariant lookupServiceName,
+                                                               toVariant lookupDomain,
+                                                               flags_empty ]
+  addMatch client (listenAvahi $ fromVariant sb) (handler client lookupCallback)
+  addMatch client (listenAvahi $ Just serviceResolver) (handler client lookupCallback)
+  return ()
 
 -- | Dispatch signal and call corresponding function.
-dispatch ::  [(Text, Signal -> IO b)] -> Signal -> IO ()
+dispatch ::  [(String, Signal -> IO b)] -> Signal -> IO ()
 dispatch pairs signal = do
   let signame = signalMember signal
   let good = [callback | (name, callback) <- pairs, memberName_ name == signame]
   forM_ good $ \callback ->
       callback signal
 
-handler ::  Proxy -> (Service -> IO ()) -> BusName -> Signal -> IO ()
-handler server callback busname signal = do
-  dispatch [("ItemNew", on_new_item server),
+handler ::  Client -> (Service -> IO ()) -> Signal -> IO ()
+handler client callback signal = do
+  dispatch [("ItemNew", on_new_item client),
             ("Found",   on_service_found callback) ] signal
 
-on_new_item ::  Proxy -> Signal -> IO ()
-on_new_item server signal = do
+on_new_item ::  Client -> Signal -> IO ()
+on_new_item client signal = do
   let body = signalBody signal
       [iface,proto,name,stype,domain,flags] = body
-  call server serverInterface "ServiceResolverNew" [iface,
-                                                    proto,
-                                                    name,
-                                                    stype,
-                                                    domain, 
-                                                    proto2variant PROTO_UNSPEC,
-                                                    flags_empty ]
+  call' client "/" serverInterface "ServiceResolverNew" [iface,
+                                                         proto,
+                                                         name,
+                                                         stype,
+                                                         domain, 
+                                                         proto2variant PROTO_UNSPEC,
+                                                         flags_empty ]
   return ()
 
 on_service_found :: (Service -> IO ()) -> Signal -> IO ()

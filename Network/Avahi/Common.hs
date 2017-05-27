@@ -1,9 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Network.Avahi.Common where
 
+import Control.Exception
 import Data.Int
 import Data.Word
-import DBus.Client.Simple
+import DBus
+import DBus.Client
+import DBus.Internal.Types
 
 -- | Service specification
 data Service = Service {
@@ -76,4 +79,12 @@ avahiBrowser = interfaceName_ "org.freedesktop.Avahi.ServiceBrowser"
 
 entryGroupInterface :: InterfaceName
 entryGroupInterface = interfaceName_ "org.freedesktop.Avahi.EntryGroup"
+
+call' :: Client -> ObjectPath -> InterfaceName -> MemberName -> [Variant] -> IO [Variant]
+call' client object interface method args = do
+  reply <- call_ client (methodCall object interface method) {
+             methodCallDestination = Just avahiBus,
+             methodCallBody = args
+           }
+  return $ methodReturnBody reply
 
