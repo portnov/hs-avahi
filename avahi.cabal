@@ -30,7 +30,7 @@ Build-type:          Simple
 
 -- Extra files to be distributed with the package, such as examples or
 -- a README.
--- Extra-source-files:  
+Extra-source-files:  browse.hs
 
 -- Constraint on the version of Cabal needed to build this package.
 Cabal-version:       >=1.6
@@ -53,3 +53,7 @@ Library
   -- Extra tools (e.g. alex, hsc2hs, ...) needed to build the source.
   -- Build-tools:         
   
+Source-repository head
+  type:     git
+  location: https://github.com/portnov/hs-avahi.git
+
