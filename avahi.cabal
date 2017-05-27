@@ -1,7 +1,7 @@
 -- The name of the package.
 Name:                avahi
 
-Version:             0.1.1
+Version:             0.2.0
 
 Synopsis:            Minimal DBus bindings for Avahi daemon (http://avahi.org)
 
