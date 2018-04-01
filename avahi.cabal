@@ -33,7 +33,7 @@ Build-type:          Simple
 Extra-source-files:  browse.hs
 
 -- Constraint on the version of Cabal needed to build this package.
-Cabal-version:       >=1.6
+Cabal-version:       >=1.8
 
 
 Library
@@ -46,12 +46,16 @@ Library
   -- Packages needed in order to build this package.
   Build-depends:       base >= 4 && < 5, dbus >= 0.10.13,
                        text >= 0.11.1
-  
-  -- Modules not exported by this package.
-  -- Other-modules:       
-  
-  -- Extra tools (e.g. alex, hsc2hs, ...) needed to build the source.
-  -- Build-tools:         
+
+Executable avahi-browse
+  Main-is: browse.hs
+  Other-modules: Network.Avahi
+                 Network.Avahi.Announce
+                 Network.Avahi.Browse
+                 Network.Avahi.Common
+  Build-depends:       base >= 4 && < 5, dbus >= 0.10.13,
+                       text >= 0.11.1,
+                       avahi
   
 Source-repository head
   type:     git
