@@ -15,6 +15,9 @@ import DBus.Internal.Types
 import DBus.Internal.Message
 
 import Network.Avahi.Common
+import Data.ByteString (ByteString)
+import Data.Text.Encoding (decodeUtf8)
+import qualified Data.Text as Text
 
 listenAvahi ::  Maybe BusName -> Maybe MemberName -> C.MatchRule
 listenAvahi name member = matchAny { matchSender = name, matchMember = member }
@@ -75,9 +78,9 @@ on_service_found callback signal = do
                   serviceHost = fromVariant_ "service host" host,
                   serviceAddress = fromVariant addr,
                   servicePort = fromVariant_ "service port" port,
-                  serviceText = maybe "" toString (fromVariant text :: Maybe [[Word8]]) }
+                  serviceText = maybe "" toString (fromVariant text :: Maybe [ByteString]) }
   callback service
 
-toString :: [[Word8]] -> String
-toString list = concatMap (map (chr . fromIntegral)) list
+toString :: [ByteString] -> String
+toString = Text.unpack . Text.concat . fmap (decodeUtf8)
 
